@@ -186,6 +186,7 @@ let currentQuestionIndex = 0;
 let correctAnswers = 0;
 let timerInterval;
 let timeRemaining = 10;
+let filteredQuestions = [];
 
 const timerElement = document.getElementById('timer');
 const questionTitleElement = document.getElementById('questionTitle');
@@ -196,21 +197,32 @@ const resultTextElement = document.getElementById('resultText');
 const restartQuizButton = document.getElementById('restartQuiz');
 const cancelQuizButton = document.getElementById('cancelQuiz');
 const questionListElement = document.getElementById('questionList');
+const htmlQuestionsBtn = document.getElementById('htmlQuestionsBtn');
+const cssQuestionsBtn = document.getElementById('cssQuestionsBtn');
+const javascriptQuestionsBtn = document.getElementById('javascriptQuestionsBtn');
 
 function startTimer() {
     timeRemaining = 10;
+    timerElement.textContent = `00:${timeRemaining < 10 ? '0' : ''}${timeRemaining}`;
     timerInterval = setInterval(() => {
-        timeRemaining--;
-        timerElement.textContent = `00:${timeRemaining < 10 ? '0' : ''}${timeRemaining}`;
-        if (timeRemaining <= 0) {
+        if (timeRemaining > 0) {
+            timeRemaining--;
+            timerElement.textContent = `00:${timeRemaining < 10 ? '0' : ''}${timeRemaining}`;
+        } else {
             clearInterval(timerInterval);
-            submitAnswer();
+            moveToNextQuestion();
         }
     }, 1000);
 }
 
 function displayQuestion() {
-    const currentQuestion = questions[currentQuestionIndex];
+    if (filteredQuestions.length === 0) {
+        resultCardElement.classList.remove('hidden');
+        resultTextElement.textContent = "No questions available in this category.";
+        return;
+    }
+
+    const currentQuestion = filteredQuestions[currentQuestionIndex];
     questionTitleElement.textContent = currentQuestion.question;
     optionsListElement.innerHTML = '';
     currentQuestion.options.forEach(option => {
@@ -224,12 +236,16 @@ function displayQuestion() {
 }
 
 function markAnswer(selectedOption) {
-    const currentQuestion = questions[currentQuestionIndex];
-    if (selectedOption === currentQuestion.answer) {
+    const currentQuestion = filteredQuestions[currentQuestionIndex];
+    if (selectedOption === currentQuestion.correctAnswer) {
         correctAnswers++;
     }
+    moveToNextQuestion();
+}
+
+function moveToNextQuestion() {
     currentQuestionIndex++;
-    if (currentQuestionIndex < questions.length) {
+    if (currentQuestionIndex < filteredQuestions.length) {
         displayQuestion();
         clearInterval(timerInterval);
         startTimer();
@@ -240,13 +256,18 @@ function markAnswer(selectedOption) {
 
 function submitAnswer() {
     clearInterval(timerInterval);
-    markAnswer(document.querySelector('li.selected')?.textContent);
+    const selectedOption = document.querySelector('li.selected')?.textContent;
+    if (selectedOption) {
+        markAnswer(selectedOption);
+    } else {
+        markAnswer(null);
+    }
 }
 
 function displayResult() {
     document.getElementById('quiz').classList.add('hidden');
     resultCardElement.classList.remove('hidden');
-    resultTextElement.textContent = `You got ${correctAnswers} out of ${questions.length} correct.`;
+    resultTextElement.textContent = `You got ${correctAnswers} out of ${filteredQuestions.length} correct.`;
 }
 
 function cancelQuiz() {
@@ -276,7 +297,7 @@ function highlightCurrentQuestion() {
 
 function populateQuestionList() {
     questionListElement.innerHTML = '';
-    questions.forEach((_, index) => {
+    filteredQuestions.forEach((_, index) => {
         const div = document.createElement('div');
         div.textContent = `Question ${index + 1}`;
         div.addEventListener('click', () => {
@@ -289,10 +310,25 @@ function populateQuestionList() {
     });
 }
 
+function filterQuestions(category) {
+    filteredQuestions = questions.filter(question => question.category === category);
+    currentQuestionIndex = 0;
+    correctAnswers = 0;
+    resultCardElement.classList.add('hidden');
+    document.getElementById('quiz').classList.remove('hidden');
+    populateQuestionList();
+    displayQuestion();
+    startTimer();
+}
+
 submitAnswerButton.addEventListener('click', submitAnswer);
 cancelQuizButton.addEventListener('click', cancelQuiz);
 restartQuizButton.addEventListener('click', restartQuiz);
+htmlQuestionsBtn.addEventListener('click', () => filterQuestions('HTML'));
+cssQuestionsBtn.addEventListener('click', () => filterQuestions('CSS'));
+javascriptQuestionsBtn.addEventListener('click', () => filterQuestions('JavaScript'));
 
-populateQuestionList();
-displayQuestion();
-startTimer();
+// Initially, display an empty screen
+document.getElementById('quiz').classList.add('hidden');
+resultCardElement.classList.add('hidden');
+questionListElement.innerHTML = '';
